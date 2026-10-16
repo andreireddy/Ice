@@ -65,7 +65,7 @@ let package = Package(
     name: "Ice",
     platforms: [.macOS(.v14)],
     dependencies: [
-        .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.9.2"),
+        .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.10.0"),
         .package(url: "https://github.com/sindresorhus/LaunchAtLogin-Modern", from: "1.0.0"),
         .package(url: "https://github.com/tmandry/AXSwift", from: "0.3.2"),
         .package(url: "https://github.com/buh/CompactSlider", from: "1.1.5"),
