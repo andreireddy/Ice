@@ -105,9 +105,13 @@ struct AboutSettingsPane: View {
     @ViewBuilder
     private var updatesSection: some View {
         IceSection(options: .hasDividers) {
-            automaticallyCheckForUpdates
-            automaticallyDownloadUpdates
-            if updatesManager.canCheckForUpdates {
+            if UpdatesManager.isCommunityBuild {
+                Link("Download Community Updates", destination: UpdatesManager.releasesURL)
+            } else {
+                automaticallyCheckForUpdates
+                automaticallyDownloadUpdates
+            }
+            if updatesManager.canCheckForUpdates && !UpdatesManager.isCommunityBuild {
                 checkForUpdates
             }
         }

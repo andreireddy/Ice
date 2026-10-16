@@ -1,0 +1,44 @@
+name: Build macOS app
+on:
+  push:
+    branches: [main, 'fix/**']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Regression checks
+        run: python3 Tests/run-regressions.py
+      - name: Build universal app
+        run: |
+          set -o pipefail
+          xcodebuild -project Ice.xcodeproj -scheme Ice -configuration Release \
+            -derivedDataPath build/DerivedData -destination 'generic/platform=macOS' \
+            ARCHS='arm64 x86_64' ONLY_ACTIVE_ARCH=NO CODE_SIGNING_ALLOWED=NO \
+            build | tee build.log
+      - name: Sign and package
+        run: |
+          cp -R build/DerivedData/Build/Products/Release/Ice.app build/Ice.app
+          codesign --force --deep --sign - --options runtime build/Ice.app
+          codesign --verify --deep --strict build/Ice.app
+          lipo -verify_arch arm64 x86_64 build/Ice.app/Contents/MacOS/Ice
+          lipo -verify_arch arm64 x86_64 build/Ice.app/Contents/XPCServices/MenuBarItemService.xpc/Contents/MacOS/MenuBarItemService
+          ditto -c -k --sequesterRsrc --keepParent build/Ice.app build/Ice.zip
+          shasum -a 256 build/Ice.zip > build/SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Ice-macOS
+          path: |
+            build/Ice.zip
+            build/SHA256SUMS
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: build-log
+          path: build.log

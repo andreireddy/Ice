@@ -29,7 +29,7 @@ extension MenuBarItemService {
             let queue = DispatchQueue.targetingGlobal(
                 label: "MenuBarItemService.Connection.queue",
                 qos: .userInteractive,
-                attributes: .concurrent
+                attributes: []
             )
             let logger = Logger(category: "MenuBarItemService.Connection")
             self.session = Session(queue: queue, logger: logger)
@@ -104,7 +104,11 @@ extension MenuBarItemService {
                     logger.warning("Session was cancelled with error \(error.localizedDescription)")
                     self.session = nil
                 }
-                session.setPeerRequirement(.isFromSameTeam())
+                if CodeSigningInfo.shouldEnforceSameTeamRequirement {
+                    session.setPeerRequirement(.isFromSameTeam())
+                } else {
+                    CodeSigningInfo.logPeerVerificationDecision()
+                }
                 session.setTargetQueue(queue)
                 try session.activate()
                 self.session = session

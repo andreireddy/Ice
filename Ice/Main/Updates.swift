@@ -9,6 +9,11 @@ import SwiftUI
 /// Manager for app updates.
 @MainActor
 final class UpdatesManager: NSObject, ObservableObject {
+    /// Community releases use manual downloads until a signed appcast is available.
+    static let isCommunityBuild = Bundle.main.object(forInfoDictionaryKey: "IceCommunityBuild") as? Bool == true
+
+    static let releasesURL = URL(string: "https://github.com/andreireddy/Ice/releases")!
+
     /// A Boolean value that indicates whether the user can check for updates.
     @Published var canCheckForUpdates = false
 
@@ -20,7 +25,7 @@ final class UpdatesManager: NSObject, ObservableObject {
 
     /// The underlying updater controller.
     private(set) lazy var updaterController = SPUStandardUpdaterController(
-        startingUpdater: true,
+        startingUpdater: !Self.isCommunityBuild,
         updaterDelegate: self,
         userDriverDelegate: self
     )
@@ -55,6 +60,10 @@ final class UpdatesManager: NSObject, ObservableObject {
     /// Performs the initial setup of the manager.
     func performSetup(with appState: AppState) {
         self.appState = appState
+        if Self.isCommunityBuild {
+            canCheckForUpdates = true
+            return
+        }
         _ = updaterController
         configureCancellables()
     }
@@ -69,6 +78,10 @@ final class UpdatesManager: NSObject, ObservableObject {
 
     /// Checks for app updates.
     @objc func checkForUpdates() {
+        if Self.isCommunityBuild {
+            NSWorkspace.shared.open(Self.releasesURL)
+            return
+        }
         #if DEBUG
         // Checking for updates hangs in debug mode.
         let alert = NSAlert()

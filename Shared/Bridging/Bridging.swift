@@ -113,17 +113,26 @@ extension Bridging {
 
     /// Returns the identifier of the display with the active menu bar.
     static func getActiveMenuBarDisplayID() -> CGDirectDisplayID? {
-        guard let string = CGSCopyActiveMenuBarDisplayIdentifier(getMainConnection()) else {
-            logger.error("CGSCopyActiveMenuBarDisplayIdentifier returned nil")
-            return nil
+        let displays = getActiveDisplayList()
+        if
+            let string = CGSCopyActiveMenuBarDisplayIdentifier(getMainConnection()),
+            let uuid = CFUUIDCreateFromString(nil, string.takeRetainedValue()),
+            let display = displays.first(where: { getDisplayUUID(for: $0) == uuid })
+        {
+            return display
         }
-        guard let uuid = CFUUIDCreateFromString(nil, string.takeRetainedValue()) else {
-            logger.error("CFUUIDCreateFromString returned nil")
-            return nil
+
+        // macOS 26.4+ can return nil from the private active-display API.
+        // Prefer the display containing the frontmost menu bar window so
+        // captures use that display's scale, including on secondary screens.
+        let windows = WindowInfo.createMenuBarWindows(option: .onScreen)
+        for window in windows where window.isWindowServerWindow && window.layer == kCGMainMenuWindowLevel {
+            if let display = displays.first(where: { CGDisplayBounds($0).contains(window.bounds) }) {
+                return display
+            }
         }
-        return getActiveDisplayList().first { displayID in
-            getDisplayUUID(for: displayID) == uuid
-        }
+        let mainDisplay = CGMainDisplayID()
+        return displays.contains(mainDisplay) ? mainDisplay : displays.first
     }
 }
 
