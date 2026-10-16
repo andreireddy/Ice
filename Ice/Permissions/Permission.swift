@@ -36,9 +36,6 @@ class Permission: ObservableObject, Identifiable {
     /// Observer that runs on a timer to check permissions.
     private var timerCancellable: AnyCancellable?
 
-    /// Observer that observes the ``hasPermission`` property.
-    private var hasPermissionCancellable: AnyCancellable?
-
     /// Creates a permission.
     ///
     /// - Parameters:
@@ -93,16 +90,11 @@ class Permission: ObservableObject, Identifiable {
         guard !hasPermission else {
             return
         }
-        return await withCheckedContinuation { continuation in
-            hasPermissionCancellable = $hasPermission.sink { [weak self] hasPermission in
-                guard let self else {
-                    continuation.resume()
-                    return
-                }
-                if hasPermission {
-                    hasPermissionCancellable?.cancel()
-                    continuation.resume()
-                }
+        // Each caller owns its subscription. SwiftUI can start this task
+        // more than once while presenting/reopening the permissions window.
+        for await granted in $hasPermission.values {
+            if granted || Task.isCancelled {
+                return
             }
         }
     }
@@ -111,8 +103,6 @@ class Permission: ObservableObject, Identifiable {
     func stopCheck() {
         timerCancellable?.cancel()
         timerCancellable = nil
-        hasPermissionCancellable?.cancel()
-        hasPermissionCancellable = nil
     }
 }
 

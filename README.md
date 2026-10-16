@@ -3,6 +3,49 @@
     <h1>Ice</h1>
 </div>
 
+## macOS Tahoe community build
+
+This fork packages the upstream `macos-26` work plus fixes for recent Tahoe
+releases. Download **Ice.zip** from [this fork's releases](https://github.com/andreireddy/Ice/releases).
+The release app supports Apple Silicon and Intel; macOS 14 is the minimum.
+Runtime verification is performed on macOS 26.5.2. macOS 27 is not verified.
+
+1. Quit any running copy of Ice, unzip the download, and move `Ice.app` into `Applications`.
+2. This community build is ad-hoc signed and is **not Apple-notarized**. If macOS blocks it,
+   open System Settings → Privacy & Security → Open Anyway, then confirm opening Ice.
+3. Grant Ice Accessibility access. Grant Screen Recording to enable item images, layout,
+   search and appearance features. If macOS requests it, quit and reopen Ice after granting access.
+4. Verify showing/hiding items, clicking an Ice Bar item, dragging an item between layout
+   sections, and search. On multiple displays, also check each display's icon size.
+
+Updates for this build are downloaded manually from this fork's releases via the About pane.
+The upstream update checker is disabled for community builds.
+
+### Build and verify
+
+With Xcode 26 or later, build the `Ice` scheme in `Ice.xcodeproj`.
+The `Build macOS app` workflow builds both architectures, signs the app ad-hoc,
+runs regression and bundled-XPC tests, and uploads an installable ZIP.
+
+Without Xcode, run `zsh Scripts/build-without-xcode.sh` (macOS 26 SDK required).
+This builds for the host architecture and writes `build/Ice.app`. It compiles all
+executable code from source, and reuses only the compiled asset catalog from the
+upstream beta archive, pinned by SHA-256. CLT build support and signature inspection
+are adapted from [Steven Chen's upstream PR #985](https://github.com/jordanbaird/Ice/pull/985).
+
+Run `python3 Tests/run-regressions.py` and
+`bash Tests/run-xpc-smoke.sh build/Ice.app` to check transparent captures,
+concurrent permission waits/cancellation, and the embedded helper handshake.
+
+Known limitations: multi-display runtime checks need physical displays; the
+upstream report [#946](https://github.com/jordanbaird/Ice/issues/946) about items
+moving into the always-hidden section is not yet reproduced or claimed fixed.
+The upstream transparent-menu-bar appearance limitation also remains: enable
+“Show menu bar background” in System Settings → Menu Bar if the custom appearance
+produces a brightness mismatch.
+
+## Upstream project
+
 Ice is a powerful menu bar management tool. While its primary function is hiding and showing menu bar items, it aims to cover a wide variety of additional features to make it one of the most versatile menu bar tools available.
 
 ![Banner](https://github.com/user-attachments/assets/4423085c-4e4b-4f3d-ad0f-90a217c03470)

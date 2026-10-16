@@ -42,3 +42,39 @@ with tempfile.TemporaryDirectory(prefix='ice-regressions-') as temp:
     binary = pathlib.Path(temp) / 'regressions'
     subprocess.run(['swiftc', str(swift), '-o', str(binary)], check=True)
     subprocess.run([str(binary)], check=True)
+
+# Exercise concurrent permission waiters and SwiftUI-style task cancellation.
+permission = (root / 'Ice/Permissions/Permission.swift').read_text()
+permission = permission[:permission.index('// MARK: - AccessibilityPermission')]
+permission_cases = r"""
+@main struct PermissionRegression {
+    @MainActor static func main() async throws {
+        var granted = false
+        let permission = Permission(title: "Test", details: [], isRequired: true,
+            settingsURL: nil, check: { granted }, request: {})
+        let first = Task { await permission.waitForPermission() }
+        let second = Task { await permission.waitForPermission() }
+        try await Task.sleep(for: .milliseconds(100))
+        granted = true
+        await first.value
+        await second.value
+        await permission.waitForPermission() // Already granted: returns immediately.
+        permission.stopCheck()
+
+        let denied = Permission(title: "Test", details: [], isRequired: true,
+            settingsURL: nil, check: { false }, request: {})
+        let cancelled = Task { await denied.waitForPermission() }
+        try await Task.sleep(for: .milliseconds(100))
+        cancelled.cancel()
+        await cancelled.value
+        denied.stopCheck()
+        print("PASS: concurrent permission waiters, already granted and cancellation")
+    }
+}
+"""
+with tempfile.TemporaryDirectory(prefix='ice-permissions-') as temp:
+    swift = pathlib.Path(temp) / 'PermissionRegression.swift'
+    swift.write_text(permission + permission_cases)
+    binary = pathlib.Path(temp) / 'regressions'
+    subprocess.run(['swiftc', '-parse-as-library', str(swift), '-o', str(binary)], check=True)
+    subprocess.run([str(binary)], check=True, timeout=15)

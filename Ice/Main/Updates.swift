@@ -12,6 +12,7 @@ final class UpdatesManager: NSObject, ObservableObject {
     /// Community releases use manual downloads until a signed appcast is available.
     static let isCommunityBuild = Bundle.main.object(forInfoDictionaryKey: "IceCommunityBuild") as? Bool == true
 
+    // swiftlint:disable:next force_unwrapping
     static let releasesURL = URL(string: "https://github.com/andreireddy/Ice/releases")!
 
     /// A Boolean value that indicates whether the user can check for updates.
