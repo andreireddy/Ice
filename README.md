@@ -35,7 +35,7 @@ are adapted from [Steven Chen's upstream PR #985](https://github.com/jordanbaird
 
 Run `python3 Tests/run-regressions.py` and
 `bash Tests/run-xpc-smoke.sh build/Ice.app` to check transparent captures,
-concurrent permission waits/cancellation, and the embedded helper handshake.
+concurrent permission waits/cancellation, display-selection fallbacks, and the embedded helper handshake.
 
 Known limitations: multi-display runtime checks need physical displays; the
 upstream report [#946](https://github.com/jordanbaird/Ice/issues/946) about items

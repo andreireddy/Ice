@@ -78,3 +78,58 @@ with tempfile.TemporaryDirectory(prefix='ice-permissions-') as temp:
     binary = pathlib.Path(temp) / 'regressions'
     subprocess.run(['swiftc', '-parse-as-library', str(swift), '-o', str(binary)], check=True)
     subprocess.run([str(binary)], check=True, timeout=15)
+
+# Run the production display-selection function against simulated OS responses.
+# This covers the nil-identifier failure and secondary-display capture selection.
+bridging = (root / 'Shared/Bridging/Bridging.swift').read_text()
+start = bridging.index('    static func getActiveMenuBarDisplayID()')
+end = bridging.index('\n    }', start) + len('\n    }')
+display_function = bridging[start:end]
+display_support = r'''
+import Foundation
+import CoreGraphics
+var activeDisplays: [CGDirectDisplayID] = [1, 2]
+var privateIdentifier: CFString?
+var menuWindows: [WindowInfo] = []
+var mainDisplay: CGDirectDisplayID = 1
+let secondaryUUID = CFUUIDCreateFromString(nil, "01234567-89AB-CDEF-0123-456789ABCDEF" as CFString)!
+let primaryUUID = CFUUIDCreateFromString(nil, "11234567-89AB-CDEF-0123-456789ABCDEF" as CFString)!
+func CGSCopyActiveMenuBarDisplayIdentifier(_ connection: Int) -> Unmanaged<CFString>? {
+    privateIdentifier.map { Unmanaged.passRetained($0) }
+}
+func CGMainDisplayID() -> CGDirectDisplayID { mainDisplay }
+func CGDisplayBounds(_ id: CGDirectDisplayID) -> CGRect {
+    CGRect(x: id == 1 ? 0 : 1000, y: 0, width: 1000, height: 800)
+}
+struct WindowInfo {
+    var isWindowServerWindow = true
+    var layer = Int(kCGMainMenuWindowLevel)
+    let bounds: CGRect
+    enum Option { case onScreen }
+    static func createMenuBarWindows(option: Option) -> [WindowInfo] { menuWindows }
+}
+enum Bridging {
+    static func getActiveDisplayList() -> [CGDirectDisplayID] { activeDisplays }
+    static func getMainConnection() -> Int { 0 }
+    static func getDisplayUUID(for id: CGDirectDisplayID) -> CFUUID? { id == 1 ? primaryUUID : secondaryUUID }
+'''
+display_cases = r'''
+privateIdentifier = CFUUIDCreateString(nil, secondaryUUID)
+precondition(Bridging.getActiveMenuBarDisplayID() == 2, "Use the OS identifier when valid")
+privateIdentifier = nil
+menuWindows = [WindowInfo(bounds: CGRect(x: 1000, y: 0, width: 1000, height: 24))]
+precondition(Bridging.getActiveMenuBarDisplayID() == 2, "Recover secondary display from menu bar geometry")
+menuWindows = []
+precondition(Bridging.getActiveMenuBarDisplayID() == 1, "Fall back to main active display")
+activeDisplays = [2]
+precondition(Bridging.getActiveMenuBarDisplayID() == 2, "Do not select an inactive main display")
+activeDisplays = []
+precondition(Bridging.getActiveMenuBarDisplayID() == nil, "No active display is not a capture target")
+print("PASS: private display identifier, secondary geometry, main fallback and headless state")
+'''
+with tempfile.TemporaryDirectory(prefix='ice-displays-') as temp:
+    swift = pathlib.Path(temp) / 'main.swift'
+    swift.write_text(display_support + display_function + '\n}\n' + display_cases)
+    binary = pathlib.Path(temp) / 'regressions'
+    subprocess.run(['swiftc', str(swift), '-o', str(binary)], check=True)
+    subprocess.run([str(binary)], check=True)

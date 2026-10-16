@@ -34,7 +34,7 @@ jobs:
           bash Tests/run-xpc-smoke.sh build/Ice.app
           python3 Tests/run-launch-smoke.py build/Ice.app
           ditto -c -k --sequesterRsrc --keepParent build/Ice.app build/Ice.zip
-          shasum -a 256 build/Ice.zip > build/SHA256SUMS
+          (cd build && shasum -a 256 Ice.zip > SHA256SUMS)
       - uses: actions/upload-artifact@v4
         with:
           name: Ice-macOS
