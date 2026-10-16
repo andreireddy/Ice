@@ -256,9 +256,9 @@ printf 'APPL????' > "$CONT/PkgInfo"
 install_name_tool -add_rpath "@executable_path/../Frameworks" "$CONT/MacOS/Ice" 2>/dev/null || true
 
 # ---------------------------------------------------------------- sign
-log "signing (ad-hoc, hardened runtime)"
-codesign --force --sign - --options runtime "$XPC"
-codesign --force --deep --sign - --options runtime "$OUT_APP"
+log "signing (ad-hoc)"
+codesign --force --sign - --options 0 "$XPC"
+codesign --force --deep --sign - --options 0 "$OUT_APP"
 codesign --verify --deep --strict "$OUT_APP"
 
 log "done: $OUT_APP"
